@@ -13,7 +13,14 @@ from anytree import Node, RenderTree
 import csv
 
 ## Output functions
+
 def remove_all_files_in_directory(directory):
+    """
+    Remove all files in the specified directory except for .csv and .py files.
+
+    Args:
+        directory (str): The path to the directory to clean.
+    """
     for root, dirs, files in os.walk(directory):
         for file in files:
             if not file.endswith('.csv') and not file.endswith('.py'):
@@ -25,6 +32,18 @@ def remove_all_files_in_directory(directory):
                     print(f"Error deleting file {file_path}: {e}")
 
 def get_top_terms_per_cluster(X, labels, vectorizer, top_n=3):
+    """
+    Get the top N terms for each cluster from a TF-IDF matrix and KMeans labels.
+
+    Args:
+        X (scipy.sparse matrix): TF-IDF feature matrix.
+        labels (array-like): Cluster labels for each row in X.
+        vectorizer (TfidfVectorizer): Fitted TF-IDF vectorizer.
+        top_n (int): Number of top terms to return per cluster.
+
+    Returns:
+        dict: Mapping from cluster id to a string of top terms.
+    """
     terms = vectorizer.get_feature_names_out()
     cluster_terms = {}
     for cluster_id in set(labels):
@@ -35,6 +54,18 @@ def get_top_terms_per_cluster(X, labels, vectorizer, top_n=3):
     return cluster_terms    
 
 def pivot_heatmap(df, sumrows, numberfmt, save_path, name, title, ylabel):
+    """
+    Plot a heatmap from a DataFrame, optionally adding sum rows/columns, and save as an image.
+
+    Args:
+        df (pd.DataFrame): Data to plot.
+        sumrows (bool): Whether to add sum rows/columns.
+        numberfmt (str): Format string for numbers (e.g., '.0f').
+        save_path (str): Directory to save the image.
+        name (str): Filename (without extension) for the image.
+        title (str): Title for the heatmap.
+        ylabel (str): Label for the y-axis.
+    """
     # Replace sum rows and columns with neutral values for heatmap
     if df.values.any():
         if sumrows:
@@ -66,6 +97,14 @@ def pivot_heatmap(df, sumrows, numberfmt, save_path, name, title, ylabel):
         plt.close()
 
 def plot_top_parts(data, sales_col, save_path):
+    """
+    Plot a bar chart of the top parts by a sales column and save as an image.
+
+    Args:
+        data (pd.DataFrame): Data containing part information.
+        sales_col (str): Column name for sales values.
+        save_path (str): Directory to save the image.
+    """
     # Aggregate total sales by part
     # aggregated = data.groupby(part_col)[sales_col].sum().reset_index(drop=True)
     # Sort by sales and take the top N
@@ -83,6 +122,14 @@ def plot_top_parts(data, sales_col, save_path):
     plt.close()
 
 def breakdownPlots(df, statistic, save_path):
+    """
+    Generate and save various heatmaps and distribution plots for part categories, motor sizes, and customer ratios.
+
+    Args:
+        df (pd.DataFrame): Data containing part, sales, and customer info.
+        statistic (str): Column name for the statistic to analyze (e.g., 'quantityShipped').
+        save_path (str): Directory to save plots.
+    """
 
     numberfmt = '.0f'
 
@@ -182,6 +229,15 @@ def breakdownPlots(df, statistic, save_path):
     #     pivot_heatmap(variant_df, False, numberfmt, save_path + 'Variants/', i, i, 'MotorSize')
 
 def writeExcel(df, quarter_df, materials_df, statistic):
+    """
+    Write sales, inventory, and materials data to an Excel file with multiple sheets by motor size and a materials sheet.
+
+    Args:
+        df (pd.DataFrame): Main sales/inventory data.
+        quarter_df (pd.DataFrame): Quarterly sales data.
+        materials_df (pd.DataFrame): Materials requirements data.
+        statistic (str): Column name for the main statistic (e.g., 'quantityShipped').
+    """
 
     # Merge the sales data with the quarter sales data, change the column names
     excel_df = df.merge(quarter_df[['partNumber', statistic + '_quarter']], on='partNumber', how='left').fillna(0)
@@ -220,6 +276,16 @@ def writeExcel(df, quarter_df, materials_df, statistic):
 
 ## Data processing functions 
 def aggregateStatByPart(df, statistic):
+    """
+    Aggregate a DataFrame by part number, summing the specified statistic and keeping the first value for other columns.
+
+    Args:
+        df (pd.DataFrame): Data to aggregate.
+        statistic (str): Column name to sum.
+
+    Returns:
+        pd.DataFrame: Aggregated DataFrame.
+    """
     # Aggregate the sales data by part number
     agg_rules = {col: 'first' for col in df.columns if col != statistic}
     agg_rules[statistic] = 'sum'
@@ -227,6 +293,16 @@ def aggregateStatByPart(df, statistic):
     return df
 
 def swapPartNumbers(df, mode):
+    """
+    Swap part numbers in the DataFrame for better parsing, depending on the mode ('E2' or 'Tomahawk').
+
+    Args:
+        df (pd.DataFrame): Data containing part numbers.
+        mode (str): 'E2' to convert to E2 part numbers, 'Tomahawk' to convert to Tomahawk part numbers.
+
+    Returns:
+        pd.DataFrame: DataFrame with swapped part numbers.
+    """
     
      # replace partnumbers for better parsing of motor size and category
     replacements =  {
@@ -293,6 +369,15 @@ def swapPartNumbers(df, mode):
     return df
 
 def correctPN(df):
+    """
+    Correct specific part numbers in the DataFrame based on known corrections.
+
+    Args:
+        df (pd.DataFrame): Data containing part numbers.
+
+    Returns:
+        pd.DataFrame: DataFrame with corrected part numbers.
+    """
     corrections = {
         'SH47080V': 'SH47080',
         'SH52BAX-S-V-V-F': 'SH52BA-S-V-V-F'
@@ -302,6 +387,16 @@ def correctPN(df):
     return df
 
 def addMotorSize(df, motor_sizes):
+    """
+    Extract and add a 'MotorSize' column to the DataFrame based on part numbers and a list of motor sizes.
+
+    Args:
+        df (pd.DataFrame): Data containing part numbers.
+        motor_sizes (list of str): List of valid motor size strings.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'MotorSize' column added.
+    """
 
     # Create a regex pattern from the list
     pattern = r'(' + '|[a-zA-Z]{2}'.join(motor_sizes) + r')'
@@ -321,6 +416,16 @@ def addMotorSize(df, motor_sizes):
     return df
 
 def categorize(df, cluster_names=[]):
+    """
+    Categorize parts in the DataFrame using provided cluster names or KMeans clustering on part descriptions.
+
+    Args:
+        df (pd.DataFrame): Data containing part descriptions and numbers.
+        cluster_names (dict): Optional mapping of category names to matching rules (regex or list).
+
+    Returns:
+        pd.DataFrame: DataFrame with 'Category' column assigned.
+    """
     
     if 'Category' not in df.columns:
         df['Category'] = 'none'
@@ -357,6 +462,12 @@ def categorize(df, cluster_names=[]):
     return df
 
 def checkCategories(df):
+    """
+    Check and print uncategorized parts using KMeans clustering for manual review.
+
+    Args:
+        df (pd.DataFrame): DataFrame with a 'Category' column.
+    """
     # categorize the leftovers with k-means to evalute completeness
     leftovers_df = categorize(df[df['Category'].str.contains('none', case=False)])
 
@@ -365,7 +476,18 @@ def checkCategories(df):
         print(leftovers_df[leftovers_df['Cluster'] == i]['partDescription'].unique())
         print(leftovers_df[leftovers_df['Cluster'] == i]['partNumber'].unique())
 
-def getBlanks(inventory_df, quartersales_df, statistic): 
+def getBlanks(inventory_df, quartersales_df, statistic):
+    """
+    Calculate blank and mold inventory, adjusting for multipliers and equivalent molds, and merge with sales data.
+
+    Args:
+        inventory_df (pd.DataFrame): Inventory data with part numbers and categories.
+        quartersales_df (pd.DataFrame): Quarterly sales data.
+        statistic (str): Column name for the statistic to merge (e.g., 'quantityShipped').
+
+    Returns:
+        pd.DataFrame: DataFrame of blank/mold inventory with sales info.
+    """
 
     equivalentBlankMolds = {
         'SH96115KM': 'SH96005K',
@@ -426,6 +548,19 @@ def getBlanks(inventory_df, quartersales_df, statistic):
 
 ## JSON request functions using E2 API    
 def longSearchQuery(url, headers, fields, searchField, search):
+    """
+    Perform a long search query to the E2 API, batching requests if the search list is large.
+
+    Args:
+        url (str): Base URL for the API endpoint.
+        headers (dict): HTTP headers for authentication.
+        fields (str): Comma-separated list of fields to retrieve.
+        searchField (str): Field to search on (e.g., 'partNumber').
+        search (list): List of values to search for.
+
+    Returns:
+        list: List of results from the API.
+    """
     start = 0
     take = 300 #url can only be so long
     if isinstance(search[0], (int, float)):
@@ -442,10 +577,34 @@ def longSearchQuery(url, headers, fields, searchField, search):
     return output
 
 async def fetch(session, url, headers, fields, skip):
+    """
+    Asynchronously fetch a batch of data from the E2 API with pagination.
+
+    Args:
+        session (aiohttp.ClientSession): Active aiohttp session.
+        url (str): API endpoint URL.
+        headers (dict): HTTP headers for authentication.
+        fields (str): Comma-separated list of fields to retrieve.
+        skip (int): Number of records to skip (for pagination).
+
+    Returns:
+        dict: JSON response from the API.
+    """
     async with session.get(url + f'&take=200&skip={str(skip)}', headers=headers, params={'fields': fields}) as response:
         return await response.json()
 
 async def get_all_data(url, headers, fields):
+    """
+    Asynchronously retrieve all data from the E2 API, handling pagination.
+
+    Args:
+        url (str): API endpoint URL.
+        headers (dict): HTTP headers for authentication.
+        fields (str): Comma-separated list of fields to retrieve.
+
+    Returns:
+        list: List of all results from the API.
+    """
     output = []
     skip = 0
     async with aiohttp.ClientSession() as session:
@@ -459,6 +618,18 @@ async def get_all_data(url, headers, fields):
     return output
 
 def authHeader(url, api_key, password, user):
+    """
+    Authenticate with the E2 API and return a headers dictionary with a bearer token.
+
+    Args:
+        url (str): Base URL for the API.
+        api_key (str): API key for authentication.
+        password (str): User password.
+        user (str): Username.
+
+    Returns:
+        dict: HTTP headers with Bearer token for API requests.
+    """
     # API endpoint for token generation
     registrationURL = url+'register?apiKey='+ api_key + '&username=' + user +'&password=' + password
     
@@ -477,6 +648,21 @@ def authHeader(url, api_key, password, user):
     return headers
 
 def getdB(url, header, db_name, fields, root='', search={}, filterString = ''):
+    """
+    Retrieve a database from the E2 API as a DataFrame, optionally saving to CSV and supporting search/filtering.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        db_name (str): Name of the database/table to retrieve.
+        fields (str): Comma-separated list of fields to retrieve.
+        root (str): Optional directory to save CSV.
+        search (dict): Optional search dictionary {field: values}.
+        filterString (str): Optional filter string for the query.
+
+    Returns:
+        pd.DataFrame: Retrieved data as a DataFrame.
+    """
     # This is the wrapper function for retrieving individual databases from the E2 API. fields is a list of strings that are the fields to be retrieved,
     #  db_name is the name of the database to be retrieved, and search is a dictionary with the field to be searched as the key and the search term as the value.
     # If root is specified, the data will be saved to a csv file in the root directory. If filterString is specified, it will be appended to the end of the query string.
@@ -507,7 +693,17 @@ def getdB(url, header, db_name, fields, root='', search={}, filterString = ''):
 
 
 def getOpenSales(url, header, df):
+    """
+    Retrieve and merge open sales order quantities for parts in the DataFrame, splitting in-process and customer orders.
 
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        df (pd.DataFrame): DataFrame with part numbers to match.
+
+    Returns:
+        pd.DataFrame: DataFrame with open order quantities merged.
+    """
 
     fields = 'partNumber,quantityToMake,status, orderNumber'
     openOrderQty = getdB(url, header, 'order-line-items', fields, filterString='status=Open')
@@ -530,6 +726,17 @@ def getOpenSales(url, header, df):
 
 
 def getOpenPurchases(url, header, df):
+    """
+    Retrieve and merge open purchase order quantities for parts in the DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        df (pd.DataFrame): DataFrame with part numbers to match.
+
+    Returns:
+        pd.DataFrame: DataFrame with open purchase order quantities merged.
+    """
     openOrderQty = getdB(url, header, 'purchase-order-line-items', 'partNumber,quantityOrdered,quantityReceived,partDescription', filterString='status=Open')
     openOrderQty = openOrderQty.fillna(0)
     openOrderQty['quantityOrdered'] = openOrderQty['quantityOrdered']-openOrderQty['quantityReceived']
@@ -540,6 +747,15 @@ def getOpenPurchases(url, header, df):
     return df
 
 def getLeadTimes(purchases):
+    """
+    Calculate recent lead times for each part number from purchase order data.
+
+    Args:
+        purchases (pd.DataFrame): DataFrame with purchase order data, including 'dateEntered' and 'dateFinished'.
+
+    Returns:
+        pd.DataFrame: DataFrame with most recent lead time for each part number.
+    """
     dateStats = ['dateEntered', 'dateFinished']
     purchases = purchases[dateStats + ['partNumber', 'vendorCode']]
     purchases = purchases.dropna()
@@ -560,6 +776,16 @@ def getLeadTimes(purchases):
     return recent_lead_times
 
 def getEmployees(url, header):
+    """
+    Retrieve employee data from the E2 API as a DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+
+    Returns:
+        pd.DataFrame: DataFrame of employee data.
+    """
     loop = asyncio.get_event_loop()
     fields = 'employeeCode,employeeName,active,departmentNumber'
     employees = pd.DataFrame(loop.run_until_complete(get_all_data(url + f'employees', header, fields)))
@@ -567,6 +793,19 @@ def getEmployees(url, header):
 
 # functions that acquire multiple databases to form a composite dataframe
 def getSales(url, header, startDate, root):
+    """
+    Retrieve sales and invoice detail data from the E2 API and merge into a single DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        startDate (str): Start date for filtering sales (YYYY-MM-DD).
+        root (str): Optional directory to save CSVs.
+
+    Returns:
+        pd.DataFrame: DataFrame of merged sales and invoice details.
+    """
+
     fields_dict = {
         'ar-invoices': 'invoiceNumber,invoiceDate,customerCode',
         'ar-invoice-details': 'partNumber,partDescription,quantityShipped,unitPrice,invoiceNumber,jobNumber,discountPercent'
@@ -580,6 +819,18 @@ def getSales(url, header, startDate, root):
     return salesFinal_df
 
 def getPurchases(url, header, startDate, root):
+    """
+    Retrieve purchase order line items and purchase orders from the E2 API and merge into a single DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        startDate (str): Start date for filtering purchases (YYYY-MM-DD).
+        root (str): Optional directory to save CSVs.
+
+    Returns:
+        pd.DataFrame: DataFrame of merged purchase order line items and purchase orders.
+    """
 
     fields_dict = {
         'purchase-order-line-items': 'dateFinished,dueDate,itemNumber,lastModDate,outsideService,partDescription,partNumber,purchaseOrderNumber,quantityOrdered,quantityReceived,status,unit,unitCost',
@@ -599,6 +850,18 @@ def getPurchases(url, header, startDate, root):
     return purchasesFinaldf
 
 def getorderItems(url, header, startDate, root):
+    """
+    Retrieve order line items and related order data from the E2 API and merge into a single DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        startDate (str): Start date for filtering orders (YYYY-MM-DD).
+        root (str): Optional directory to save CSVs.
+
+    Returns:
+        pd.DataFrame: DataFrame of merged order line items and order data.
+    """
     
     fields_dict = {
         'order-line-items': 'actualEndDate, actualStartDate, dateFinished, dueDate, estimatedEndDate, estimatedStartDate, itemNumber, jobNotes, jobNumber, masterJobNumber, orderNumber, partDescription, partNumber, pricingUnit, productCode, quantityCanceled, quantityOrdered, quantityShippedToCustomer, quantityShippedToStock, quantityToMake, quantityToStock, revision, status, totalActualHours, totalEstimatedHours, uniqueID, unitPrice, unitPriceForeign, workCode',
@@ -614,7 +877,20 @@ def getorderItems(url, header, startDate, root):
     return orders_df
 
 def getJobs(url, header, startDate, root, orderItems_df):
-    
+    """
+    Retrieve job routings, job materials, and estimates from the E2 API and merge them for job analysis.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        startDate (str): Start date for filtering jobs (YYYY-MM-DD).
+        root (str): Optional directory to save CSVs.
+        orderItems_df (pd.DataFrame): DataFrame of order items to match jobs.
+
+    Returns:
+        tuple: (jobs_df, materials_df, estimateMaterials_df)
+    """
+
     fields_dict = {
         'order-routings': 'actualEndDate, actualStartDate, actualPiecesGood, burdenRate, description, employeeCode, estimatedQuantity, jobNumber, laborRate, operationCode, orderNumber,machinesRun, partNumber, status, stepNumber, timeUnit, totalActualHours, totalEstimatedHours, vendorCode, workCenter, workCenterOrVendor',
         'routings': 'partNumber, stepNumber, workCenter, vendorCode, description, setupTime, timeUnit, cycleTime, cycleUnit, burdenRate, laborRate, lastModDate',
@@ -644,6 +920,17 @@ def getJobs(url, header, startDate, root, orderItems_df):
 
 ## Tree functions
 def makeTree(url, header, df):
+    """
+    Build a part tree from a DataFrame using E2 API data, returning the root node.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        df (pd.DataFrame): DataFrame with part numbers and descriptions.
+
+    Returns:
+        Node: Root node of the constructed tree.
+    """
     # Create a root node
     root = Node("Root")
 
@@ -684,6 +971,15 @@ def makeTree(url, header, df):
     return root
 
 def pruneTree(tree):
+    """
+    Prune the tree by removing duplicate nodes, keeping only the deepest instance of each part.
+
+    Args:
+        tree (Node): Root node of the tree to prune.
+
+    Returns:
+        Node: Pruned tree root node.
+    """
     nodeNames = set([node.name for node in tree.descendants])
     for node in nodeNames:
         nodeCopies = [j for j in tree.descendants if j.name == node]
@@ -696,6 +992,17 @@ def pruneTree(tree):
     return tree
 
 def grabTreeLayer(url, header, df):
+    """
+    Retrieve the next layer of materials for the given parts from the E2 API and return as a DataFrame.
+
+    Args:
+        url (str): Base URL for the API.
+        header (dict): HTTP headers for authentication.
+        df (pd.DataFrame): DataFrame with part numbers to query.
+
+    Returns:
+        pd.DataFrame: DataFrame of the next layer of materials.
+    """
     fields = 'partNumber,subPartNumber,description,quantity,unit,unitPrice'
     allMaterials = longSearchQuery(url + f'materials', header, fields, 'partNumber', list(df['partNumber'].unique()))
     df = pd.DataFrame(allMaterials)
@@ -703,6 +1010,17 @@ def grabTreeLayer(url, header, df):
     return df
 
 def getTreeMaterials(tree, df, statistic):
+    """
+    Traverse the tree and collect all required materials for the given parts and statistic.
+
+    Args:
+        tree (Node): Root node of the part tree.
+        df (pd.DataFrame): DataFrame with part numbers and statistics.
+        statistic (str): Column name for the statistic to collect (e.g., 'quantityShipped').
+
+    Returns:
+        pd.DataFrame: DataFrame of required materials.
+    """
     materials = pd.DataFrame(columns=['partNumber', statistic, 'partDescription'])
     moldBlankStrings = ['BK', 'KM', 'BM', 'BNK', 'BVM', 'JM', 'XM']
     for _, row in df.iterrows():
@@ -716,6 +1034,15 @@ def getTreeMaterials(tree, df, statistic):
     return materials
     
 def getMaterials(node, materials, moldBlankStrings, parentQuantity):
+    """
+    Recursively collect materials from a tree node, considering mold/blank nodes and parent quantity.
+
+    Args:
+        node (Node): Current node in the tree.
+        materials (pd.DataFrame): DataFrame to append material info to.
+        moldBlankStrings (list): List of strings identifying mold/blank nodes.
+        parentQuantity (float): Quantity multiplier from parent node.
+    """
     if not node:
         return
 
@@ -726,6 +1053,17 @@ def getMaterials(node, materials, moldBlankStrings, parentQuantity):
         getMaterials(child, materials, moldBlankStrings, node.quantity*parentQuantity)
 
 def getTreeComponents(tree, df, statistic):
+    """
+    Traverse the tree and collect all components for the given parts and statistic.
+
+    Args:
+        tree (Node): Root node of the part tree.
+        df (pd.DataFrame): DataFrame with part numbers and statistics.
+        statistic (str): Column name for the statistic to collect.
+
+    Returns:
+        pd.DataFrame: DataFrame of required components.
+    """
     # df = aggregateStatByPart(df, statistic)
     componentsdf = pd.DataFrame(columns=['partNumber', statistic, 'partDescription'])
     moldBlankStrings = ['BK', 'KM', 'BM', 'BNK', 'BVM', 'JM', 'XM']
@@ -743,6 +1081,15 @@ def getTreeComponents(tree, df, statistic):
     return componentsdf
 
 def getComponents(node, components, moldBlankStrings, parentQuantity):
+    """
+    Recursively collect components from a tree node, considering mold/blank nodes and parent quantity.
+
+    Args:
+        node (Node): Current node in the tree.
+        components (pd.DataFrame): DataFrame to append component info to.
+        moldBlankStrings (list): List of strings identifying mold/blank nodes.
+        parentQuantity (float): Quantity multiplier from parent node.
+    """
     
     moldBlank = any(s in node.name for s in moldBlankStrings)
     moldBlankChildren = [child for child in node.children if any(s in child.name for s in moldBlankStrings)]
@@ -757,16 +1104,23 @@ def getComponents(node, components, moldBlankStrings, parentQuantity):
         getComponents(child, components, moldBlankStrings, node.quantity*parentQuantity)
 
 def plotTree(tree):
+    """
+    Print a visual representation of the tree structure to the console.
+
+    Args:
+        tree (Node): Root node of the tree to print.
+    """
     for pre, _, node in RenderTree(tree):
         print(f"{pre}{node.name}")
 
 
 def save_anytree_to_csv(root, filename):
     """
-    Save an anytree structure to a CSV file, including name, description, and quantity.
-    
-    :param root: The root node of the anytree structure.
-    :param filename: The output CSV file name.
+    Save an anytree structure to a CSV file, including name, description, and quantity for each node.
+
+    Args:
+        root (Node): Root node of the anytree structure.
+        filename (str): Output CSV file name.
     """
     with open(filename, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
@@ -781,6 +1135,15 @@ def save_anytree_to_csv(root, filename):
     print(f"Tree saved to {filename}")
 
 def load_anytree_from_csv(filename):
+    """
+    Load an anytree structure from a CSV file and reconstruct the tree.
+
+    Args:
+        filename (str): Path to the CSV file to load.
+
+    Returns:
+        Node: Root node of the reconstructed tree.
+    """
     nodes = {}  # Dictionary to store Node objects
     root = None  # Store the root node
 
@@ -814,6 +1177,16 @@ def load_anytree_from_csv(filename):
 
 ## Umbrella functions
 def addSizeAndCategory(df, check=True):
+    """
+    Add part categories and motor size information to the DataFrame, removing non-value-added parts.
+
+    Args:
+        df (pd.DataFrame): DataFrame with part numbers and descriptions.
+        check (bool): If True, print uncategorized parts for manual review.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'Category' and 'MotorSize' columns added.
+    """
   
       # Define part categories and remainder categories
     part_categories = {
@@ -886,6 +1259,18 @@ def addSizeAndCategory(df, check=True):
     return df
 
 def cleanSales(df, statistic, datestat, includeStock=[]):
+    """
+    Clean and filter sales data, removing unwanted records and converting columns to appropriate types.
+
+    Args:
+        df (pd.DataFrame): Raw sales data.
+        statistic (str): Column name for the sales statistic (e.g., 'quantityShipped').
+        datestat (str): Column name for the date field (e.g., 'invoiceDate').
+        includeStock (list): If not empty, include stock sales; otherwise, exclude.
+
+    Returns:
+        pd.DataFrame: Cleaned sales data.
+    """
     df.dropna(subset=[datestat], inplace=True)
 
     # Clean up the data: Remove '$' signs and convert key columns to numeric
@@ -910,6 +1295,18 @@ def cleanSales(df, statistic, datestat, includeStock=[]):
     return df
 
 def getMaterialsWInv(df, tree, inventory_df, statistic):
+    """
+    Calculate material requirements for parts, subtracting inventory and in-process quantities, and merge with inventory data.
+
+    Args:
+        df (pd.DataFrame): DataFrame with part demand and inventory info.
+        tree (Node): Root node of the part tree.
+        inventory_df (pd.DataFrame): DataFrame with inventory quantities.
+        statistic (str): Column name for the demand statistic.
+
+    Returns:
+        pd.DataFrame: DataFrame of material requirements with inventory considered.
+    """
     # subtract inventory and inProcess 
     df[statistic] = df[statistic]-(df['quantityOnHand']-df['quantityToMake'])
     df = df[df[statistic]>0]
